@@ -1,4 +1,4 @@
-﻿using Microsoft.Win32;
+using Microsoft.Win32;
 using System.Diagnostics;
 using System.Windows;
 using System.IO;
@@ -7,6 +7,7 @@ using System.IO.Compression;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows.Controls;
+using System.Xml;
 
 namespace ReportComparison
 {
@@ -16,16 +17,22 @@ namespace ReportComparison
 	public partial class MainWindow : Window
 	{
 
-		private string[] ParmListFile1;
-		private string[] ParmListFile2;
-		private List<string> ComparatorList;
- 
+		private List<string> ParmListFile1 = new List<string>();
+		private List<string> ParmListFile2 = new List<string>();
+		private List<string> ComparatorList = new List<string>();
+		private string firstFilePathZip = string.Empty;
+		private string secondFilePathZip = string.Empty;
+		private string parmSettingsXmlPath = string.Empty;
+		private string configSettingsXmlPath = string.Empty;
+
+
 		public MainWindow()
 		{
 			InitializeComponent();
 			
 			
 		}
+
 
 		
 
@@ -39,20 +46,22 @@ namespace ReportComparison
 			}
 			if(FileUploadNumber == 1)
 			{
-				ParmListFile1 = parmList.Select(i => i.ToString()).ToArray();
+				ParmListFile1 = parmList;
 			}
 			else
 			{
-				ParmListFile2 = parmList.Select(i => i.ToString()).ToArray();
+				ParmListFile2 = parmList;
 			}
 			
 		}
 
-		private void ScanZipForSettingsFile(int FileUploadNumber, string SettingsFile)
+		private void ScanZipForSettingsFile(int FileUploadNumber)
 		{
-			var fileContentParm = string.Empty;
+			
 			var filePathParm = string.Empty;
+			var filePathConfig = string.Empty;
 			var filePathZip = string.Empty;
+			
 			var tempFilePath = "c:\\Users\\CNC User\\log.txt";
 			
 
@@ -67,9 +76,20 @@ namespace ReportComparison
 			if (openFileDialog.ShowDialog() == true)
 			{
 
+				if(FileUploadNumber == 1)
+				{
+					firstFilePathZip = openFileDialog.FileName;
+				}
+				else
+				{
+					secondFilePathZip = openFileDialog.FileName;
+				}
 
 				filePathZip = openFileDialog.FileName;
+
 				Trace.WriteLine(filePathZip);
+
+
 				using (ZipArchive archive = ZipFile.OpenRead(filePathZip))
 				{
 					foreach (ZipArchiveEntry entry in archive.Entries)
@@ -80,9 +100,23 @@ namespace ReportComparison
 							continue;
 						}
 
-						if (entry.FullName.Equals(SettingsFile))
+						switch (entry.FullName)
 						{
-							filePathParm = filePathZip + "\\" + entry.FullName;
+							case "cncm.prm.xml":
+								parmSettingsXmlPath = entry.FullName;
+								ComparatorList.Remove(entry.FullName);
+								break;
+							case "cncmcfg.xml":
+								configSettingsXmlPath = entry.FullName;
+								ComparatorList.Remove(entry.FullName);
+								break;
+							default:
+								break;
+						}
+
+						if (entry.FullName.Equals("cncm.prm.xml"))
+						{
+							filePathParm = firstFilePathZip + "\\" + entry.FullName;
 							Trace.WriteLine(filePathParm);
 							if (!File.Exists(tempFilePath))
 							{
@@ -130,12 +164,17 @@ namespace ReportComparison
 
 		}
 
+		private void ExtractToTempFile()
+		{
+
+		}
+
 		private void Button_Click_File1(object sender, RoutedEventArgs e)
 
 		{
 
-			ScanZipForSettingsFile(1, "cncm.prm.xml");
-			ScanZipForSettingsFile(1, "cncmcfg.xml");
+			ScanZipForSettingsFile(1);
+		
 
 
 		}
@@ -144,14 +183,14 @@ namespace ReportComparison
 
 		{
 
-			ScanZipForSettingsFile(2, "cncm.prm.xml");
+			ScanZipForSettingsFile(2);
 
 
 		}
 
 		private void AddOrRemoveComparator_Parm(object sender, RoutedEventArgs e)
 		{
-			if (ParmSelect.IsChecked == true)
+			if (ParmSelect.IsChecked == false)
 			{
 				ComparatorList.Remove("cncm.prm.xml");
 			}
@@ -163,8 +202,64 @@ namespace ReportComparison
 		}
 		private void AddOrRemoveComparator_Config(object sender, RoutedEventArgs e)
 		{
+			if (ConfigSelect.IsChecked == false)
+			{
+				ComparatorList.Remove("cncmcfg.xml");
+			}
+			else
+			{
+				ComparatorList.Add("cncmcfg.xml");
+			}
 
 
+		}
+
+		private void ComparisonFunction(object sender, RoutedEventArgs e)
+		{
+			string XmlName = ""; 
+
+			if(firstFilePathZip == string.Empty || secondFilePathZip == string.Empty)
+			{
+				MessageBox.Show("Load valid report zip files before continuing");
+				return;
+			}
+
+			SaveFileDialog ComparisonFileDialog = new SaveFileDialog();
+
+			ComparisonFileDialog.Filter = "xml files (*.xml) |*.xml";
+			ComparisonFileDialog.FilterIndex = 2;
+			ComparisonFileDialog.RestoreDirectory = true;
+			ComparisonFileDialog.Title = "Save Comparison File";
+
+
+
+		
+
+			if(ComparisonFileDialog.ShowDialog() == true)
+			{
+
+				
+
+				string copyText = "";
+				foreach (string entry in ParmListFile1)
+				{
+					copyText += entry;
+				}
+				
+				File.WriteAllText(ComparisonFileDialog.FileName, copyText);
+				
+				XmlName = ComparisonFileDialog.FileName;
+				XmlDocument XmlDoc = new XmlDocument();
+				XmlDoc.Load(XmlName);
+				XmlNodeList parms = XmlDoc.GetElementsByTagName("value");
+				Trace.WriteLine(parms[0].InnerText);
+
+
+
+
+
+
+			}
 		}
 	}
 }
