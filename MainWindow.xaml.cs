@@ -1,16 +1,11 @@
 using Microsoft.Win32;
-using System.Diagnostics;
-using System.Windows;
-using System.IO;
-using System;
-using System.IO.Compression;
 using System.Collections.Generic;
 using System.Linq;
-using System.Windows.Controls;
-using System.Xml;
+using System.Windows;
 
 
-namespace ReportComparison
+
+namespace ReportParmandConfigTool
 {
 	/// <summary>
 	/// Interaction logic for MainWindow.xaml
@@ -18,14 +13,15 @@ namespace ReportComparison
 	public partial class MainWindow : Window
 	{
 
-		private List<ReportComparisonTool.ReportZip> zips = new List<ReportComparisonTool.ReportZip>();
+		private Dictionary<int, ReportParmandConfigTool.ReportZip> zips = new Dictionary<int, ReportParmandConfigTool.ReportZip>();
+
 
 		public MainWindow()
 		{
 			InitializeComponent();
 		}
 
-	
+
 
 
 
@@ -33,252 +29,194 @@ namespace ReportComparison
 
 		private void AddItem(object sender, RoutedEventArgs e)
 		{
-			
+
+			int AddIndex = 0;
 
 			OpenFileDialog openFileDialog = new OpenFileDialog();
 			openFileDialog.Title = "Open Zip";
 			openFileDialog.InitialDirectory = "c:\\";
 			openFileDialog.Filter = "zip files | *.zip";
 			openFileDialog.RestoreDirectory = true;
-			ReportComparisonTool.ReportZip zip = new ReportComparisonTool.ReportZip();
-			if (Nickname.Text != "")
-			{
-				zip.Set_Nickname(Nickname.Text);	
-			}
-			if(Date.Text != "")
-			{
-				zip.Set_Date(Date.Text);
-			}
+			ReportZip zip = new ReportZip();
 
 			if (openFileDialog.ShowDialog() == true)
 			{
-				Trace.WriteLine(openFileDialog.FileName);
-				
+
+				if (sender.Equals(AddFile1))
+				{
+					Report1Upload.Text = openFileDialog.FileName;
+					AddIndex = 0;
+				}
+
+				if (sender.Equals(AddFile2))
+				{
+					Report2Upload.Text = openFileDialog.FileName;
+					AddIndex = 1;
+				}
+
+				if (sender.Equals(AddFile3))
+				{
+					Report3Upload.Text = openFileDialog.FileName;
+					AddIndex = 2;
+				}
+
 				zip.Set_Report_Path(openFileDialog.FileName);
 				zip.Populate_Parm(zip.Get_Path());
-				ReportList.Items.Add(zip.Get_Nickname());
+				zip.Populate_Config(zip.Get_Path());
+				zips.Add(AddIndex, zip);
 			}
 
-			Nickname.Text = "";
-			Date.Text = "";
+
 
 		}
+
+
 
 		private void RemoveItem(object sender, RoutedEventArgs e)
 		{
-			if(ReportList.SelectedItem != null)
+
+
+
+			if (sender == RemoveFile1)
 			{
-				ReportList.Items.Remove(ReportList.SelectedItem);
-				
-			}
+				if (Report1Upload.Text != "")
 
-			
-		}
-
-
-
-
-		private void Compare(object sender, RoutedEventArgs e)
-		{
-			
-
-			ReportComparisonTool.ReportZip zip = new ReportComparisonTool.ReportZip();
-			foreach(ReportComparisonTool.ReportZip entity in zips)
-			{
-				Trace.WriteLine(entity.Get_Path());
-			}
-			zip.CreateComparisonFile(zips);
-
-		}
-
-		private void RunFileWindow(object sender, RoutedEventArgs e)
-		{
-			ReportComparisonTool.ReportZip zip = new ReportComparisonTool.ReportZip();
-			zip.Set_Report_Path("c:\\cncm\\report_88C2558E769B-0303212554_2023-03-28_15-38-36.zip");
-			zip.Populate_Parm("c:\\cncm\\report_88C2558E769B-0303212554_2023-03-28_15-38-36.zip");
-
-		
-		}
-
-	
-		/*private void CompareParm()
-		{
-
-
-			if(elemList1.Count != elemList2.Count)
-			{
-				MessageBox.Show("Incompatible report .zip folders; files may be corrupted or mismatched machines may be compared");
-				return;
-			}
-
-			string full_text = "";
-
-
-			int longestLengthOfParm = 0;
-
-			for (int i = 0; i < elemList1.Count; i++)
-			{
-				if (elemList1[i].InnerText.Length > longestLengthOfParm)
 				{
-
-					longestLengthOfParm = elemList1[i].InnerText.Length;
-
+					zips.Remove(0);
+					Report1Upload.Text = "";
+					Report1Nickname.Text = "";
 				}
-			}
 
-			string header = WriteParametersHeaderToFile(longestLengthOfParm);
-
-			full_text += header;
-
-
-			for (int i = 0; i < elemList1.Count; i++)
-			{
-				if (!elemList1[i].InnerText.Equals(elemList2[i].InnerText))
+				if (Report2Upload.Text != "")
 				{
-					full_text += WriteParameterDifferenceToFile(i.ToString(), elemList1[i].InnerText, elemList2[i].InnerText, longestLengthOfParm);
-					
-
-
+					Report1Upload.Text = Report2Upload.Text;
+					Report1Nickname.Text = Report2Nickname.Text;
+					Report2Upload.Text = "";
+					Report2Nickname.Text = "";
+					ReportZip tempZip = zips[1];
+					zips.Remove(1);
+					zips.Add(0, tempZip);
 				}
-			}
 
-			SaveFileDialog ComparisonFileDialog = new SaveFileDialog();
-
-			ComparisonFileDialog.Filter = "txt files (*.txt) |*.txt";
-			ComparisonFileDialog.FilterIndex = 2;
-			ComparisonFileDialog.RestoreDirectory = true;
-			ComparisonFileDialog.Title = "Save Comparison File";
-
-			if (ComparisonFileDialog.ShowDialog() == true)
-			{
-				File.WriteAllText(ComparisonFileDialog.FileName, full_text);
-			}
-
-
-		}*/
-
-		static string WriteParameterDifferenceToFile(string parm_name, string val1, string val2, int longest)
-		{
-			string result = "";
-
-
-
-			result += "Parameter ";
-
-			result += parm_name;
-
-			int v = (3 - parm_name.Length);
-
-			for (int i = 1; i <= v; i++)
-			{
-				result += " ";
-			}
-
-
-
-
-			result += "|  " + val1;
-
-			v = (longest - val1.Length);
-
-			for(int i = 1; i < v; i++)
-			{
-				result += " ";
-			}
-			
-			result += "|  " + val2 + "\n";
-
-			return result;
-		}
-
-		static string WriteParametersHeaderToFile(int longest)
-		{
-			string result = "                ";
-			result += "Report 1";
-			int v = longest - "Report 1".Length;
-			for (int i = 1; i < v; i++)
-			{
-				result += " ";
-			}
-			result += "|  Report 2\n";
-
-			return result;
-			
-
-		}
-
-		private void ComparisonFunction(object sender, RoutedEventArgs e)
-		{
-			string XmlName = ""; 
-
-			
-
-
-			SaveFileDialog ComparisonFileDialog = new SaveFileDialog();
-
-			ComparisonFileDialog.Filter = "xml files (*.xml) |*.xml";
-			ComparisonFileDialog.FilterIndex = 2;
-			ComparisonFileDialog.RestoreDirectory = true;
-			ComparisonFileDialog.Title = "Save Comparison File";
-
-			if(ComparisonFileDialog.ShowDialog() == true)
-			{
-				string copyText = "";
-				/*foreach (string entry in ParmListFile1)
+				if (Report3Upload.Text != "")
 				{
-					copyText += entry;
-				}*/
-				
-				File.WriteAllText(ComparisonFileDialog.FileName, copyText);
-				
-				XmlName = ComparisonFileDialog.FileName;
-				XmlDocument XmlDoc = new XmlDocument();
-				XmlDoc.Load(XmlName);
-				XmlNodeList parms = XmlDoc.GetElementsByTagName("value");
-				Trace.WriteLine(parms[0].InnerText);
-
-
-
-
-
-
-
-
-
-
+					Report2Upload.Text = Report3Upload.Text;
+					Report2Nickname.Text = Report3Nickname.Text;
+					Report3Upload.Text = "";
+					Report3Nickname.Text = "";
+					ReportZip tempZip = zips[2];
+					zips.Remove(2);
+					zips.Add(1, tempZip);
+				}
+				else
+				{
+					Report2Nickname.Text = "";
+				}
 
 			}
-		}
 
-		public void Populate_Parm()
-		{
-			using (FileStream file = File.OpenRead("c:\\cncm\\report_88C2558E769B-0303212554_2023-03-28_15-38-36.zip"))
+			if (sender == RemoveFile2)
 			{
-				using (ZipArchive zip = new ZipArchive(file, ZipArchiveMode.Read))
+				if (Report2Upload.Text != "")
+
 				{
-					foreach (ZipArchiveEntry entry in zip.Entries)
+					zips.Remove(1);
+					Report2Upload.Text = "";
+					Report2Nickname.Text = "";
+
+					if (Report3Upload.Text != "")
 					{
-						if (entry.FullName.Contains(".xml"))
-						{
-							using (StreamReader sr = new StreamReader(entry.Open()))
-							{
-								XmlDocument XmlDoc1 = new XmlDocument();
-								XmlDoc1.Load(sr);
-								XmlElement root = XmlDoc1.DocumentElement;
-								XmlNodeList elemList1 = root.GetElementsByTagName("value");
-
-
-								for (int i = 0; i < elemList1.Count; i++)
-								{
-									Trace.WriteLine(elemList1[i]);
-								}
-
-							}
-						}
-
+						Report2Upload.Text = Report3Upload.Text;
+						Report2Nickname.Text = Report3Nickname.Text;
+						Report3Upload.Text = "";
+						Report3Nickname.Text = "";
+						ReportZip tempZip = zips[2];
+						zips.Remove(2);
+						zips.Add(1, tempZip);
 					}
+
+
+
+
+				}
+
+
+			}
+
+			if (sender == RemoveFile3)
+			{
+				if (Report3Upload.Text != "")
+
+				{
+					zips.Remove(2);
+					Report3Upload.Text = "";
+					Report3Nickname.Text = "";
+
 				}
 			}
 		}
+
+		private void CompareReports(object sender, RoutedEventArgs e)
+		{
+			//Go through each report boxes when button is pressed and add nicknames accordingly
+			int PlacementOfZipsNickname = 0;
+
+			if (Report1Upload.Text != "")
+			{
+				if (Report1Nickname.Text == "")
+				{
+					Report1Nickname.Text = "Report #1";
+					zips.ElementAt(PlacementOfZipsNickname).Value.Set_Nickname(Report1Nickname.Text);
+					PlacementOfZipsNickname++;
+				}
+				else
+				{
+					zips.ElementAt(PlacementOfZipsNickname).Value.Set_Nickname(Report1Nickname.Text);
+					PlacementOfZipsNickname++;
+				}
+			}
+
+			if (Report2Upload.Text != "")
+			{
+				if (Report2Nickname.Text == "")
+				{
+					Report2Nickname.Text = "Report #2";
+					zips.ElementAt(PlacementOfZipsNickname).Value.Set_Nickname(Report2Nickname.Text);
+					PlacementOfZipsNickname++;
+				}
+				else
+				{
+					zips.ElementAt(PlacementOfZipsNickname).Value.Set_Nickname(Report2Nickname.Text);
+					PlacementOfZipsNickname++;
+				}
+			}
+
+			if (Report3Upload.Text != "")
+			{
+				if (Report3Nickname.Text == "")
+				{
+					Report3Nickname.Text = "Report #3";
+					zips.ElementAt(PlacementOfZipsNickname).Value.Set_Nickname(Report3Nickname.Text);
+					PlacementOfZipsNickname++;
+				}
+				else
+				{
+					zips.ElementAt(PlacementOfZipsNickname).Value.Set_Nickname(Report3Nickname.Text);
+					PlacementOfZipsNickname++;
+				}
+			}
+			ReportParmandConfigTool.ReportZip zip = new ReportParmandConfigTool.ReportZip();
+			if (sender.Equals(CompareReportsButtonConfig))
+			{
+				zip.CreateConfigComparisonFile(zips);
+			}
+			else
+			{
+				zip.CreateParmComparisonFile(zips);
+			}
+
+
+		}
+
 	}
 }
